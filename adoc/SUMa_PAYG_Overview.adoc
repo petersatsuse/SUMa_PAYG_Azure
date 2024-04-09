@@ -311,6 +311,7 @@ shows you the to disks created during the deployment
  lun4 is the database DiskName
 
 so the command is
+
  suma-storage /dev/disk/azure/scsi1/lun3 /dev/disk/azure/scsi1/lun4
 
 //NOTE:: In the next version of the listing, this maybe done automatically
