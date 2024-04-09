@@ -1,0 +1,386 @@
+:docinfo:
+
+
+:title: SUSE Manager PAYG on Azure
+:subtitle: An Overview and quick guide
+
+// Variables
+:SUMA_VERSION: SUSE Manager 4.3
+
+// A few words to identify high level use case (e.g., Database-as-a-Service, edge analytics in healthcare, Kubernetes-native object storage)
+:usecase: SUSE Manager is a configuration and infrastructure management tool that saves you time and headaches when you have to manage and update tens, hundreds or even thousands of linux machines.
+
+//A brief statement of what this document provides (e.g., This document provides a brief introduction to implementing {usecase} with {product2_full} and {product1_full}.)
+:executive_summary:
+The new Azure Marketplace offering is easier to install than before and provides a flexible and automated subscription model paying via Azure.
+
+
+//==================================================================
+= {title}: {subtitle}
+
+== Introduction
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Provide a brief statement (1-4 sentences) of the purpose of the guide.
+// This is could be the same as the executive summary.
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+SUSE Manager enables you to deploy patches and packages based on software channels and repositories you can assign, helping you to reduce costs.
+It manages any Linux server connected to the network, from IoT edge devices to your Kubernetes environment, no matter where it is located – in your data center, a 3rd party data center or in the public cloud.
+
+
+=== Motivation
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Provide a motivation for the document in 2-4 sentences to identify:
+//   - what the document is about
+//   - why it may be of interest to the reader (e.g., a use case)
+//   - what products are being highlighted
+// Include an approved SUSE | Partner logo lock-up if possible
+// Include any additional, relevant details
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+Unlike traditional subscription models, Pay-As-You-Go (PAYG) does not require a long-term subscription through the SUSE Customer Center. Users can use SUSE Manager on a monthly billing model (which is a kind of PAYG ), paying only for the time of use, and the number of managed and monitored systems.
+
+PAYG with SUSE Manager is an optimal solution for those seeking control, convenience and cost savings when managing and monitoring their infrastructure on Azure.
+
+As there are certain differences in the overall setup, this guide highlights them and provides the background at to why they are needed.
+
+=== Scope
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Specify what this guide covers in no more than 2 sentences.
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+This guide takes you through the first steps to install SUSE Manager PAYG in Azure and explain the difference to a regular (BYOS) setup.
+
+
+=== Audience
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Identify for whom this document is intended, perhaps with:
+//   - topics of interests (e.g., machine learning, security, etc.)
+//   - job roles (e.g., developer, administrator, platform architect, etc.)
+//   - required skills
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+This document is intended for new users of SUSE Manager, as well as those that already run a SUSE Manager instance in their own data center or in the public cloud.
+
+
+== Prerequisites
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Identify minimum requirements (prerequisites) the reader
+// would need in order to follow the steps of this guide.
+// - Link to existing resources whenever possible.
+// - Keep this section brief but elaborate as needed.
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+* Azure Account
+
+** You need an Azure account and know in which country it gets billed
+
+* Fully Qualified Domain Name (FQDN)
+
+** The SUSE Manager server must resolve its FQDN correctly. If the FQDN cannot be resolved, it can cause problems in several of different components of SUSE Manager .
+
+* Hostname and IP Address
+
+** To ensure that the SUSE Manager domain name can be resolved by its clients, both server and client machines must be connected to a working DNS server.
+
+** *You must ensure that reverse lookups are correctly configured.*
+
+* SUSE Manager Networking Ports
+
+** You do not need to open all the ports mentioned in the link below. Some ports only need to be opened if you are using the service that requires them.
+
+** https://documentation.suse.com/suma/4.3/en/suse-manager/installation-and-upgrade/ports.html
+
+
+== Technical Architecture
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Provide a technical overview of the solution.
+// - Identify components.
+// - Describe how the components fit together.
+//   Leverage diagrams as appropriate, including (but not limited to):
+//   - component architecture
+//   - data flow diagram
+//   - workflow diagram
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+The SUSE Manager PAYG offering in Azure need to communicate with the Azure Billing API, therefore it is not a simple virtual machine (VM) offering.
+
+Azure has created the _Managed Application_ offering for this use case.
+
+see:
+https://learn.microsoft.com/en-us/azure/azure-resource-manager/managed-applications/overview
+
+// https://learn.microsoft.com/en-us/azure/azure-resource-manager/managed-applications/media/overview/managed-apps-resource-group.png
+
+.Architecture Diagram of a managed application
+//image::images/src/svg/AzureManagedApp.svg[architecture of a managed application, 80%]
+image::AzureManagedApp.svg[architecture of a managed application, 60%]
+
+=== Application resource group
+
+This resource group ( in the diagram _ResGroup A_ ) holds the managed application instance, which could be translated as the metadata or definition of the offering. It can only contain a single resource.
+
+A customer has full access to the resource group and uses it to manage the life cycle of the managed application.
+
+=== Managed resource group (MRG)
+
+This resource group ( in the diagram _MRG_ ) holds all the resources that are required by the managed application. For example, an application's virtual machines, storage accounts, and virtual networks.
+
+A _managed application_ is similar to a solution template in Azure Marketplace, with a few key differences:
+
+- The resources are deployed into a _managed resource group_ that is normally managed by the application's publisher.
+
+- It is present in the customer's subscription, but an identity in the publisher's tenant can be given access to the managed resource group.
+
+- The publisher's _management access_ and the customers _deny assignment_ are optional.
++
+There are different permission scenarios available. SUSE is using here the _Customer managed_ to give our customers of SUSE Manager full control.
+
+Customer managed::
+* Customer
+** Customer has full access to the solution (in the managed resource group)
+** The customer manages the solution
+* Publisher
+** The publisher has no access to manage the solution.
+** The publisher develops the application and publishes on Azure Marketplace but does not manage the application.
+** The publisher licenses the application for billing through Azure Marketplace.
+
+
+== Azure Installation
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Detail the steps of the installation procedure.
+// The reader should be able to copy and paste commands to
+// a local environment or follow along locally with screenshots.
+// Include one or more verification steps to validate installation.
+
+. Firstly, login to your Azure account, via https://portal.azure.com
++
+This makes sure that the Azure system is able to identify in which country your account get billed.
++
+It is important, as billing for SUSE Manager PAYG is handled via the Azure Marketplace.
+As there are restrictions on which countries this listing can be billed, the account you will to transact via should be the one you are logged into.
++
+SUSE Manager PAYG offer does show up in the Azure Marketplace as two offerings:
+
+* {SUMA_VERSION} with 24x7 Support _EMEA Orders Only_
+* {SUMA_VERSION} with 24x7 Support _No EMEA Orders_.
++
+Pick the listing that reflects in which country your Azure account gets billed. It depends on the _sold to address_ of the account, see https://learn.microsoft.com/azure/cost-management-billing/manage/change-azure-account-profile.
++
+NOTE:: Do *not* go directly to the Azure Marketplace and get the offer. Even if the offers are visible, they should not be selected from here, as the Azure Web page is not able to identify your billing account. *Always log into the portal first*.
+
+. After you are logged into the Azure Portal, click _Create a resource_.
+
+. Enter {SUMA_VERSION} into the search field on the top and press kbd:[RETURN]
++
+You get a list of offerings and need to select the version of _{SUMA_VERSION} with 24x7 Support_ depending on your billing country.
++
+For example, for an account billed in Germany, it would be _{SUMA_VERSION} with 24x7 Support (EMEA Orders Only)_.
+
++
+NOTE:: the offer show up as _Azure Application_ and not as a _Virtual Machine_
+
+. Click the description text to get the Product description and then on _Plans + Pricing_. If this is shown with a description and plan, you have chosen the right offer. If there is nothing shown you selected the wrong one.
+
+. Next, click on the _Create_ button
++
+This will bring you to a form similar you may know from creating other Azure resources.
+There are two tabs you need to fill _Basic_ and _Virtual Machine Settings_
+
+.. Fill out the _Basic_ tab
++
+... Project details
+.... As with every resource in Azure you need to provide a _Resource Group_ (RG). This can be an existing RG or you can create a new RG for this deployment.
+... Do similar with the section _Instance Details_:
+.... Region, where the instance should run.
+.... Virtual machine name, is the name of the VM in which SUSE Manager will run
+.... Username, is the administrator account for the SUSE Manager VM
+.... SSH key source and key, are needed to access the machine.
++
+We do not allow to use a password here. This is to reduce the risk of brute force attacks.
+... Next is the section _Managed Application Details_
+.... Application name is the name of the Managed Application
+.... Managed Resource Group (MRG) where SUSE Manager VM and its resources will be deployed into.
++
+.. Switch to the Tab _Virtual Machine Settings_
++
+... The default for the instance size is a D8as v5, which is a good baseline for a production server. It provides enough resources for more data disks and IOPS throughput for disk and network ( https://learn.microsoft.com/en-us/azure/virtual-machines/dasv5-dadsv5-series ).
++
+If you only need a test instance you can go smaller and choose a instance size with 4 vcpus and 16GB Memory or use maybe a B-Series ( **B**urstable) instance with similar as above configuration.
++
+... The diagnostic storage account
++
+If you normally create a VM in the Azure portal, a boot diagnostics is enabled by default. This uses a managed storage account, which get set up here. You are able to choose an existing storage account or create a new one (default).
+
+... OS Disk Size
++
+This is the root disk of the SUSE Manager install which holds the OS and the SUSE Manager Application. In addition it holds /var/cache where you need to provide storage space for each product you want to manage (see SUSE Manager Documentation - General Requirements - Hardware Requirements).
+The proposed default of 100GB should be accepted.
+
+... Database Disk Size
++
+This holds the Database for SUSE Manager and needs a minimum of 50GB. The proposed value of 80GB is a good default suggestion.
+
+... Spacewalk Disk Size
++
+This holds the package repositories and should have at least 100GB. There need to be 50GB for every SUSE product and >360GB for every RedHat or other Linux product. The proposed default of 500GB is a save default to start with.
+
+NOTE::  Repository synchronization will fail, if this directory runs out of disk space.
+
+... Public IP Address for the VM
++
+- As default a Public IP Address is created to access the SUSE Manager VM and Application. *If you use it, please ensure this is secure and access is limited*.
++
+====
+CAUTION::
+Running SUSE Manager on the public cloud means implementing robust security measures. It is essential to limit, filter, monitor, and audit access to the instance. SUSE strongly advises against a globally accessible SUSE Manager instance that lacks adequate perimeter security.
+====
++
+You should really think twice about it, as the SUSE Manager Server has, later on, access to all managed nodes and if someone get access to SUSE Manager it would mean access to all managed nodes too. Threat actors actively hunt accessible machines with open management ports ( typical SSH or RDP ) especial at cloud providers.
++
+A Network Security Group (NSG) is created by default if you choose to create a Public IP. It only allows inbound ssh access via port 22, as a minimal protection of the public IP.
++
+You should additional restrict access to a defined list of networks and let the virtual network that Azure provides drop any requests that originate from other networks.
++
+Furthermore, you also can add Just-in-time access and/or use the Azure Bastion Service and/or Firewall and/or limit address space other methods like VPN, private network to secure this public access.
++
+- You can choose to not create a public IP address ( which is more secure ) but you need to use other methods to access the created SUSE Manager VM and its Web UI to perform further configuration. Additional you need to take care of the DNS and a correct FQDN.
+
+... DNS Prefix for the public IP Address
+The SUSE Manager server must resolve its FQDN correctly. If the FQDN cannot be resolved, it can cause issues in several SUSE Manager components. To ensure that the SUSE Manager domain name can be resolved by its clients, both server and client machines must be connected to a working DNS server. You also need to ensure that *reverse lookups* are correctly configured.
++
+If you use the Public IP address, a DNS name is automatically created from Azure. You only need to make sure that a unique name is used. The default suggestion creates one by including a random number to make the domain name unique.
++
+If you do not use the public IP, you need to make sure that your setup can resolve the FQDN correctly as mentioned above.
+
+... Virtual Network / Subnet
+You see a default proposal for a virtual network where SUSE Manager will reside. By click _edit_ you can also change it to your needs.
++
+Remember that a _Managed Application_ will be deployed from SUSE to your Azure tenant, so this network is the network in the _Managed Resource Group (MRG)_ and can not be something already used.
+At a later stage, you need to peer this network to the network with the nodes you want to manage.
+Alternatively you can create the managed nodes in this network.
+
+With all field filled out press _next_ or _Create_. The Azure portal perform a final check and provide you with a summary screen of this deployment.
+
+If everything is OK, you can press _Create_ and the _Managed Application_ SUSE Manager gets deployed.
+
+
+== Configuration and Startup
+
+After the VM from the Managed Application is deployed, you can access it via SSH.
+
+Remember, the SUSE Manager PAYG setup requires, that a new Virtual Network and a new subnet is configured, which was performed in the previous step.
+
+Because SUSE Manager is deployed as a 'Managed Application' it is not possible to deploy into an existing network.
+
+Before moving on to the next step, ensure the network is correctly configured:
+
+* Ensure the value for hostname -f is identical to the reverse DNS lookup of the private IP address.
+
+* Insert the private IP with its Fully Qualified Domain Name (FQDN) into /etc/hosts
++
+For example:
+
+ 172.16.0.4 manager-vm-79512b16b7.westeurope.cloudapp.azure.com
+
+* Edit /etc/sysconfig/network/config and append _location_.cloudapp.azure.com to NETCONFIG_DNS_STATIC_SEARCHLIST.
+
+* Execute netconfig update.
+
+* Subsequently, hostname -f should return the same FQDN as obtained from nslookup 172.16.0.X.
+
+When you setup new clients which should be managed, take care that you put them into the private subnet which is configured with SUSE Manager PAYG or peer the networks where the managed nodes get created.
+
+If the network setup is complete, the next step is to configure the attached disks created during the deployment. This prepares the disks with the right filesystem and mount them to the right directories.
+
+For this we use the _suma-storage_ tool. You need to provide the block devices, _suma-storage <storage-disk-device> <database-disk-device>_
+
+The command
+
+ ls /dev/disk/azure/scsi1/
+
+shows you the to disks created during the deployment
+
+ lun3 is the spacewalk DiskName
+ lun4 is the database DiskName
+
+so the command is
+ suma-storage /dev/disk/azure/scsi1/lun3 /dev/disk/azure/scsi1/lun4
+
+//NOTE:: In the next version of the listing, this maybe done automatically
+
+Now we are ready to execute "yast2 susemanager_setup" as root user to configure your SUSE Manager system.
+
+Please follow the steps in the SUSE Manager documentation at
+https://documentation.suse.com/suma/4.3/en/suse-manager/specialized-guides/public-cloud-guide/payg/azure/payg-azure-server-setup.html
+
+//== Demonstration
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Illustrate functionality with a demonstration.
+// Begin with a description or outline of the demonstration.
+// Provide clear steps (in ordered lists) for the reader to follow.
+// Typical demonstration flow is:
+// 1. Prepare the environment for the demonstration.
+//    This should be minimal, such as downloading some data to use.
+//    If this requires more than a couple steps, consider putting it
+//    in a subsection.
+// 2. Perform the demonstration.
+//    Be careful not to overuse screenshots.
+// 3. Verify.
+//    This may be interwoven into performing the demonstration.
+//
+// As with Installation, leverage ordered lists, code blocks,
+// admonitions, and screenshots.
+//
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+
+
+
+
+== Summary
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Summarize:
+// - Motivation (1 sentence)
+// - What was covered (1-2 sentences)
+// - Next steps (unordered list of 2-4 further learning resources)
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+In this guide, you learned about the initial setup differences of SUSE Manager PAYG
+and the new behaviors you need to take care of.
+
+For all the other SUSE Manager possibilities please have a look at the product documentation.
+
+
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+// Do not modify below this break.
+// = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+//
+// ++++
+// <?pdfpagebreak?>
+// ++++
+
+
+// :leveloffset: 0
+
+// == Legal notice
+//include::common_trd_legal_notice.adoc[]
+
+//++++
+//<?pdfpagebreak?>
+//++++
+
+
+//:leveloffset: 0
+//include::common_gfdl1.2_i.adoc[]
+//
+
+//end

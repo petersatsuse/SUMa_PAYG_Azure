@@ -1,0 +1,19 @@
+# Comment out to deactivate draft mode when completed
+DRAFT=yes
+
+# Main Document 
+MAIN="SUMa_PAYG_Overview.adoc"
+
+# Turn on postprocessing
+#ADOC_POST="yes"
+
+# Format Type
+#ADOC_TYPE="article"
+ADOC_TYPE="book"
+
+# Stylesheet Root
+STYLEROOT="/usr/share/xml/docbook/stylesheet/trd"
+
+# Set document date (yyyy-mm-dd)
+#ADOC_ATTRIBUTES+=" --attribute docdate=yyyy-mm-dd"
+
